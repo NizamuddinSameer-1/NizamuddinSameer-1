@@ -35,7 +35,7 @@ import sys
 import cv2
 import numpy as np
 from PIL import Image
-from rembg import remove
+from rembg import remove, new_session
 
 RAMP = " .`:-=+*cs#%@"     # bright/sparse -> dark/dense; leading space = blank
 COLS = 90                  # below ~88 the face muddies; far above it dominates
@@ -60,8 +60,13 @@ def prep(path, crop=None):
     if crop:
         src = src.crop(crop)
 
-    cut = remove(src)
-    alpha = np.array(cut.split()[-1])
+    alpha = np.array(src.split()[-1])
+    if np.any(alpha < 250):
+        cut = src
+    else:
+        session = new_session("u2netp")
+        cut = remove(src, session=session)
+        alpha = np.array(cut.split()[-1])
 
     # Composite onto white so everything outside the subject maps to the blank
     # end of the ramp. Skip this and the background fills with @ and %.
