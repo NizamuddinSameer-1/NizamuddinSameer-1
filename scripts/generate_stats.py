@@ -382,7 +382,7 @@ def draw_status(s):
         (91, f'<text x="18" y="91" font-size="11"><tspan class="m-f">▸ Active Focus:</tspan> <tspan class="e-f">Autonomous AI Workflows &amp; Cloud GPU Automation</tspan></text>'),
         (111, f'<text x="18" y="111" font-size="11"><tspan class="m-f">▸ Core Stack  :</tspan> <tspan class="e-f">Python 3.13 · LangChain · FastAPI · PyTorch · Colab</tspan></text>'),
         (131, f'<text x="18" y="131" font-size="11"><tspan class="m-f">▸ Latest Work :</tspan> <tspan class="p-u" font-weight="600">[{safe_repo}]</tspan> <tspan class="e-f">{safe_msg}</tspan></text>'),
-        (151, f'<text x="18" y="151" font-size="11"><tspan class="m-f">▸ System Stat :</tspan> <tspan class="e-f">{s["total"]} contributions · {s["current"]["length"]}d streak · fuel: 90% [███████████░░]</tspan></text>')
+        (151, f'<text x="18" y="151" font-size="11"><tspan class="m-f">▸ System Stat :</tspan> <tspan class="e-f">{s["total"]} contributions · {s["current"]["length"]}d streak · fuel: 90% [##########--]</tspan></text>')
     ]
 
     for i, (y, content) in enumerate(items):
@@ -390,7 +390,7 @@ def draw_status(s):
         p.append(f'<g opacity="0">{fade(delay, 0.35)}{content}</g>')
 
     p.append(f'<g opacity="0">{fade(0.68)}')
-    p.append('<rect x="236" y="38" width="7" height="13" class="e-f"><animate attributeName="opacity" values="1;0;1" dur="1.1s" repeatCount="indefinite"/></rect>')
+    p.append('<rect x="276" y="38" width="7" height="13" class="e-f"><animate attributeName="opacity" values="1;0;1" dur="1.1s" repeatCount="indefinite"/></rect>')
     p.append('</g>')
 
     p.append("</svg>")

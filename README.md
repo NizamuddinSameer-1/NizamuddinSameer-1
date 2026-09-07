@@ -9,7 +9,7 @@
 
 <br><br>
 
-<img src="./status.svg?v=1" width="620" alt="Live Terminal Status HUD"/>
+<img src="./status.svg?v=2" width="620" alt="Live Terminal Status HUD"/>
 
 </div>
 
