@@ -76,7 +76,28 @@ def prep(path, crop=None):
     gray = cv2.bilateralFilter(gray, 11, 50, 50)      # smooth skin, keep edges
     gray = cv2.createCLAHE(clipLimit=CLAHE_CLIP,
                            tileGridSize=(8, 8)).apply(gray)
-    gray = (255.0 * (gray / 255.0) ** CURVE).astype("uint8")
+    gray = (255.0 * (gray / 255.0) ** CURVE).astype("float32")
+
+    # Natural vignette dissolve at bottom:
+    # Curves upward from shoulders to chest center, fading smoothly into negative space
+    h, w = gray.shape
+    fade_map = np.zeros((h, w), dtype="float32")
+    for y in range(h):
+        for x in range(w):
+            dist_x = abs(x - w / 2.0) / (w / 2.0)
+            start_y = h * (0.64 - 0.15 * (dist_x ** 1.8))
+            end_y = h * (0.90 - 0.10 * (dist_x ** 1.8))
+            if y > start_y:
+                prog = min(1.0, (y - start_y) / (end_y - start_y))
+                fade_map[y, x] = prog * prog * (3.0 - 2.0 * prog)
+
+    # Subtle organic particle dithering on the fade boundary
+    np.random.seed(42)
+    noise = np.random.uniform(-0.10, 0.10, (h, w)).astype("float32")
+    fade_map = np.clip(fade_map + noise * (fade_map * (1.0 - fade_map) * 2.0), 0.0, 1.0)
+
+    gray = gray * (1.0 - fade_map) + 255.0 * fade_map
+    gray = np.clip(gray, 0, 255).astype("uint8")
     gray[alpha < 20] = 255                            # force the matte to white
     return Image.fromarray(gray)
 
