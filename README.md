@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./ascii.svg" width="460" alt="Nizamuddin Sameer"/>
+<img src="./ascii.svg?v=3" width="460" alt="Nizamuddin Sameer"/>
 
 <img src="./stats.svg" width="620" alt="Contributions in the last year"/>
 
