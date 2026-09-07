@@ -7,6 +7,10 @@
 [github.com/NizamuddinSameer-1](https://github.com/NizamuddinSameer-1) &nbsp;·&nbsp;
 [nizamuddinsameer5@gmail.com](mailto:nizamuddinsameer5@gmail.com)
 
+<br><br>
+
+<img src="./status.svg?v=1" width="620" alt="Live Terminal Status HUD"/>
+
 </div>
 
 <img src="./hd-about.svg" width="620" alt="about"/>

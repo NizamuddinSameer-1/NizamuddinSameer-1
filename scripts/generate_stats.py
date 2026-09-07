@@ -37,6 +37,7 @@ API = "https://api.github.com/graphql"
 QUERY = """
 query($login: String!, $from: DateTime!, $to: DateTime!) {
   user(login: $login) {
+    login
     contributionsCollection(from: $from, to: $to) {
       contributionCalendar {
         totalContributions
@@ -44,8 +45,18 @@ query($login: String!, $from: DateTime!, $to: DateTime!) {
       }
     }
     repositories(first: 100, ownerAffiliations: OWNER, isFork: false,
-                 privacy: PUBLIC) {
+                 privacy: PUBLIC, orderBy: {field: PUSHED_AT, direction: DESC}) {
       nodes {
+        name
+        pushedAt
+        defaultBranchRef {
+          target {
+            ... on Commit {
+              messageHeadline
+              committedDate
+            }
+          }
+        }
         languages(first: 12, orderBy: {field: SIZE, direction: DESC}) {
           edges { size node { name } }
         }
@@ -187,13 +198,32 @@ def summarise(user):
     weekly = [sum(d["contributionCount"] for d in w) for w in weeks]
     cur, best = streaks(days)
     by_size, by_repo = languages(user["repositories"]["nodes"])
+
+    recent_commit = None
+    fallback_commit = None
+    login_name = user.get("login", "NizamuddinSameer-1")
+    for repo in user["repositories"]["nodes"]:
+        name = repo["name"]
+        target = (repo.get("defaultBranchRef") or {}).get("target") or {}
+        msg = target.get("messageHeadline")
+        if msg:
+            if name.lower() != login_name.lower():
+                if not recent_commit:
+                    recent_commit = dict(repo=name, message=msg)
+            elif not fallback_commit:
+                fallback_commit = dict(repo=name, message=msg)
+
+    recent_commit = recent_commit or fallback_commit or dict(
+        repo="pinterest-automation-suite", message="AI workflow engine active")
+
     return dict(
         total=cal["totalContributions"],
         active=sum(1 for d in days if d["contributionCount"] > 0),
         best_week=max(weekly) if weekly else 0,
         weekly=weekly, weeks=weeks,
         current=cur, longest=best,
-        by_size=by_size, by_repo=by_repo)
+        by_size=by_size, by_repo=by_repo,
+        recent_commit=recent_commit)
 
 
 # ---------------------------------------------------------------- drawing
@@ -209,10 +239,10 @@ def style(extra="", font=None):
             f".w{{fill:{DARK['data']};opacity:.16}}}}</style>")
 
 
-def head(w, h, font=None):
+def head(w, h, font=None, extra=""):
     return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" '
             f'viewBox="0 0 {w} {h}" fill="none" font-family="{MONO}">'
-            + style(font=font))
+            + style(extra=extra, font=font))
 
 
 def fade(delay, dur=0.45):
@@ -310,6 +340,59 @@ def draw_streak(s):
                  + label(x, 44, f"{val}", 34, "e-f", extra=' font-weight="600"')
                  + label(x, 64, lab, 11)
                  + label(x, 80, span, 10) + '</g>')
+    p.append("</svg>")
+    return "".join(p)
+
+
+def draw_status(s):
+    """Live terminal HUD with current focus, latest commit, and diagnostics."""
+    H = 176
+    recent = s.get("recent_commit") or {
+        "repo": "pinterest-automation-suite",
+        "message": "AI workflow engine active"
+    }
+    repo_name = recent.get("repo", "pinterest-automation-suite")
+    msg = recent.get("message", "AI workflow engine active")
+    if len(msg) > 42:
+        msg = msg[:40] + "..."
+
+    safe_msg = (msg.replace("&", "&amp;")
+                   .replace("<", "&lt;")
+                   .replace(">", "&gt;"))
+    safe_repo = (repo_name.replace("&", "&amp;")
+                          .replace("<", "&lt;")
+                          .replace(">", "&gt;"))
+
+    extra_css = (".t-bg{fill:#f6f8fa}.t-b{stroke:#d0d7de}.p-u{fill:#0969da}.p-h{fill:#1a7f37}"
+                 "@media(prefers-color-scheme:dark){.t-bg{fill:#161b22}.t-b{stroke:#30363d}.p-u{fill:#58a6ff}.p-h{fill:#3fb950}}")
+
+    p = [head(WIDTH, H, extra=extra_css)]
+    p.append(f'<g opacity="0">{fade(0.08)}')
+    p.append(f'<rect x="0.5" y="0.5" width="{WIDTH - 1}" height="{H - 1}" rx="8" class="t-bg t-b" stroke-width="1"/>')
+    p.append('<circle cx="18" cy="15" r="4.5" fill="#ff5f56"/>'
+             '<circle cx="32" cy="15" r="4.5" fill="#ffbd2e"/>'
+             '<circle cx="46" cy="15" r="4.5" fill="#27c93f"/>')
+    p.append(label(WIDTH / 2, 19, "sameer@verse: ~ (zsh)", 11, "m-f", "middle", ' letter-spacing="0.5"'))
+    p.append(f'<line x1="0" y1="30" x2="{WIDTH}" y2="30" class="t-b" stroke-width="1"/>')
+    p.append('</g>')
+
+    items = [
+        (49, f'<text x="18" y="49" font-size="11.5"><tspan class="p-u" font-weight="600">sameer@verse</tspan><tspan class="m-f">:</tspan><tspan class="p-h" font-weight="600">~</tspan><tspan class="m-f">$</tspan> <tspan class="e-f" font-weight="600">neofetch --status-hud</tspan></text>'),
+        (71, f'<text x="18" y="71" font-size="11"><tspan class="m-f">▸ OS / Kernel :</tspan> <tspan class="e-f">SameerOS v2.4 (x86_64 Linux)</tspan></text>'),
+        (91, f'<text x="18" y="91" font-size="11"><tspan class="m-f">▸ Active Focus:</tspan> <tspan class="e-f">Autonomous AI Workflows &amp; Cloud GPU Automation</tspan></text>'),
+        (111, f'<text x="18" y="111" font-size="11"><tspan class="m-f">▸ Core Stack  :</tspan> <tspan class="e-f">Python 3.13 · LangChain · FastAPI · PyTorch · Colab</tspan></text>'),
+        (131, f'<text x="18" y="131" font-size="11"><tspan class="m-f">▸ Latest Work :</tspan> <tspan class="p-u" font-weight="600">[{safe_repo}]</tspan> <tspan class="e-f">{safe_msg}</tspan></text>'),
+        (151, f'<text x="18" y="151" font-size="11"><tspan class="m-f">▸ System Stat :</tspan> <tspan class="e-f">{s["total"]} contributions · {s["current"]["length"]}d streak · fuel: 90% [███████████░░]</tspan></text>')
+    ]
+
+    for i, (y, content) in enumerate(items):
+        delay = 0.16 + i * 0.08
+        p.append(f'<g opacity="0">{fade(delay, 0.35)}{content}</g>')
+
+    p.append(f'<g opacity="0">{fade(0.68)}')
+    p.append('<rect x="236" y="38" width="7" height="13" class="e-f"><animate attributeName="opacity" values="1;0;1" dur="1.1s" repeatCount="indefinite"/></rect>')
+    p.append('</g>')
+
     p.append("</svg>")
     return "".join(p)
 
@@ -466,7 +549,8 @@ def main():
 
     s = summarise(fetch(login, token))
     files = {"stats.svg": draw_stats(s), "streak.svg": draw_streak(s),
-             "langs.svg": draw_langs(s), "year.svg": draw_year(s)}
+             "langs.svg": draw_langs(s), "year.svg": draw_year(s),
+             "status.svg": draw_status(s)}
     for word in ("about", "stack", "projects", "stats", "about this page"):
         files[f"hd-{word.replace(' ', '-')}.svg"] = draw_heading(word)
 
