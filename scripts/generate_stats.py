@@ -8,6 +8,9 @@ Outputs, all sharing one visual language with ascii.svg (the portrait):
   streak.svg  current and longest streak
   langs.svg   top languages, by bytes and by repo count
   year.svg    the year as a character map, in the portrait's own ramp
+  status.svg  the live terminal HUD
+  hd-*.svg    the section headings, drawn as the shell command that
+              "printed" each section — the page reads as one terminal session
 
 Every file uses the portrait's grey ink, a monospace face, a transparent
 background, and the same left-to-right clipPath reveal with a cursor riding
@@ -99,9 +102,15 @@ def font_text():
     return face("jbmono-400.woff2", 400) + face("jbmono-600.woff2", 600)
 
 
-def font_head():
-    """Only the letters the section headings use."""
-    return face("jbmono-head.woff2", 600)
+def font_heading():
+    """The headings set only weight 600, so they inline just that face.
+
+    They draw from the full basic-latin subset rather than a hand-cut one:
+    the headings are shell commands now, and shell commands keep accruing
+    punctuation a hand-cut subset would forget.
+    """
+    return face("jbmono-600.woff2", 600)
+
 
 WIDTH = 620            # every graphic shares one column width
 LEFT = 34              # shared left inset, so stacked blocks line up
@@ -434,8 +443,13 @@ def draw_langs(s):
     return "".join(p)
 
 
-def draw_heading(word):
-    """A section heading in the mono face, with a hairline running right.
+def draw_heading(cmd):
+    """A section heading as the shell command that "printed" the section.
+
+    The README reads as one terminal session — a boot banner up top, a logout
+    at the bottom, and every section introduced by the command that produced
+    it: `$ whoami`, `$ ls ~/stack`, and so on. The prompt sits in the dim ink,
+    the command in the emph ink, and the hairline runs right of both.
 
     GitHub strips <style> and style= from markdown, so a real markdown heading
     can only ever be GitHub's own sans. Rendering the label as an SVG is the
@@ -446,9 +460,11 @@ def draw_heading(word):
     """
     FS = 16
     H = 26
-    text_end = len(word) * FS * 0.6 + 18
-    p = [head(WIDTH, H, font=font_head())]
-    p.append(label(0, 18, word, FS, "e-f", extra=' font-weight="600"'))
+    text_end = (len(cmd) + 2) * FS * 0.6 + 18
+    p = [head(WIDTH, H, font=font_heading())]
+    p.append(f'<text x="0" y="18" font-size="{FS}" font-weight="600">'
+             f'<tspan class="m-f">$</tspan> <tspan class="e-f">{cmd}</tspan>'
+             f'</text>')
     p.append(f'<line x1="{text_end:.0f}" y1="12.5" x2="{WIDTH}" y2="12.5" '
              f'class="u-s" stroke-width="1"/>')
     p.append("</svg>")
@@ -551,8 +567,13 @@ def main():
     files = {"stats.svg": draw_stats(s), "streak.svg": draw_streak(s),
              "langs.svg": draw_langs(s), "year.svg": draw_year(s),
              "status.svg": draw_status(s)}
-    for word in ("about", "stack", "projects", "stats", "about this page"):
-        files[f"hd-{word.replace(' ', '-')}.svg"] = draw_heading(word)
+    # The page is one terminal session; each section is a command's output.
+    for name, cmd in (("about", "whoami"),
+                      ("stack", "ls ~/stack"),
+                      ("projects", "git log --oneline ~/projects"),
+                      ("stats", "gh stats --year"),
+                      ("about-this-page", "man ./this-page")):
+        files[f"hd-{name}.svg"] = draw_heading(cmd)
 
     changed = [n for n, svg in files.items()
                if write(os.path.join(out_dir, n), svg)]
